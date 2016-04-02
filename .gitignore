@@ -1,4 +1,5 @@
 /local
 /vendor
 /slack-token
+/.bundle
 
