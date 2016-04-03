@@ -1,4 +1,8 @@
 require 'slack-ruby-client'
+require './db_slack_rsvp'
+require './words'
+
+db = DBSlackRsvp.new
 
 Slack.configure do |conf|
   conf.token = File.open('slack_token').read.chomp
@@ -11,7 +15,12 @@ client.on :hello do
 end
 
 client.on :message do |data|
-  puts data.to_json
+  if $words_rsvp.include?(data['text'])
+    client.message channel: data['channel'], text:'未実装だよ。ちょっと待っててね。'
+  else
+    client.message channel: data['channel'], text:'？'
+  end
 end
 
 client.start!
+
