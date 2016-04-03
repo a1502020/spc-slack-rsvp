@@ -3,4 +3,5 @@
 /slack_token
 /.bundle
 *.db
+*.log
 
