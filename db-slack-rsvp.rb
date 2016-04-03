@@ -7,10 +7,10 @@ class DBSlackRsvp
   attr_reader :db
 
   def initialize
-    @db = Database.new('slack_rsvp.db')
+    @db = Database.new('slack-rsvp.db')
     ObjectSpace.define_finalizer self, DBSlackRsvp.finalize(@db)
-    self.exec 'days_exists' do |row|
-      if row[0] == 0 then self.exec_batch 'days_create' end
+    self.exec 'days-exists' do |row|
+      if row[0] == 0 then self.exec_batch 'days-create' end
     end
   end
 

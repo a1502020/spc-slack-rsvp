@@ -1,6 +1,6 @@
 /local
 /vendor
-/slack_token
+/slack-token
 /.bundle
 *.db
 *.log

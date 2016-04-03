@@ -1,15 +1,15 @@
 require 'slack-ruby-client'
 require 'logger'
-require './db_slack_rsvp'
+require './db-slack-rsvp'
 require './words'
 
 FileUtils.mkdir('log') unless FileTest.exist?('log')
-log = Logger.new('log/slack_rsvp.log')
+log = Logger.new('log/slack-rsvp.log')
 
 db = DBSlackRsvp.new
 
 Slack.configure do |conf|
-  conf.token = File.open('slack_token').read.chomp
+  conf.token = File.open('slack-token').read.chomp
 end
 
 client = Slack::RealTime::Client.new(logger: Logger.new('log/client.log'))
