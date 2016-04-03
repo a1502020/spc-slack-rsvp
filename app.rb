@@ -1,7 +1,7 @@
 require 'slack-ruby-client'
 
 Slack.configure do |conf|
-  conf.token = File.open('slack-token').read.chomp
+  conf.token = File.open('slack_token').read.chomp
 end
 
 client = Slack::RealTime::Client.new
