@@ -3,7 +3,8 @@ require 'logger'
 require './db_slack_rsvp'
 require './words'
 
-log = Logger.new('slack_rsvp.log')
+FileUtils.mkdir('log') unless FileTest.exist?('log')
+log = Logger.new('log/slack_rsvp.log')
 
 db = DBSlackRsvp.new
 
@@ -11,7 +12,7 @@ Slack.configure do |conf|
   conf.token = File.open('slack_token').read.chomp
 end
 
-client = Slack::RealTime::Client.new
+client = Slack::RealTime::Client.new(logger: Logger.new('log/client.log'))
 
 client.on :hello do
   log.info(':hello')
