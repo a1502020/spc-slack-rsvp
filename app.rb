@@ -40,8 +40,6 @@ class App
     @rt_client = Slack::RealTime::Client.new(logger: Logger.new('log/rt-client.log'))
     @wb_client = Slack::Web::Client.new(logger: Logger.new('log/wb-client.log'))
 
-    @ims = @wb_client.im_list['ims']
-
 
     # [event] 接続
 
@@ -98,7 +96,7 @@ class App
 
 
   def im?(channel)
-    @ims.any? { |im| im['id'] == channel }
+    channel.start_with?('D')
   end
 
 
