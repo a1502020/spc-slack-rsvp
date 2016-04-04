@@ -23,7 +23,11 @@ class KeyGen
   private
 
   def generate_one
-    (1..4).map { @chars[rand(@chars.length)] }.join
+    res = 'RSVP'
+    until res != 'RSVP'
+      res = (1..4).map { @chars[rand(@chars.length)] }.join
+    end
+    return res
   end
 
   def used?(key, from, to)
