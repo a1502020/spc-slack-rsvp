@@ -34,7 +34,6 @@ class App
     @rt_client = Slack::RealTime::Client.new(logger: Logger.new('log/rt-client.log'))
     @wb_client = Slack::Web::Client.new(logger: Logger.new('log/wb-client.log'))
 
-    @members = @wb_client.users_list['members']
     @ims = @wb_client.im_list['ims']
 
 
@@ -100,7 +99,7 @@ class App
         @db.exec 'days-insert', {:datetime => now.strftime('%Y-%m-%d %X'), :key => key, :responsibility => user}
         res = "今日のキーワードは '#{key}' だよ。"
       else
-        res = "#{user} が既に出欠確認を始めているよ。"
+        res = "<@#{user}> が既に出欠確認を始めているよ。"
       end
     end
     @rt_client.message channel: data['channel'], text: res unless res == nil
