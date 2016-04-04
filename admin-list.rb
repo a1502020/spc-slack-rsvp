@@ -14,17 +14,17 @@ class AdminList
   end
 
 
-  def is_admin?(user)
+  def admin?(user)
     @admins.include?(user)
   end
 
-  def is_op?(user)
-    is_admin?(user) || @ops.include?(user)
+  def op?(user)
+    admin?(user) || @ops.include?(user)
   end
 
 
   def add_admin(user)
-    return if is_admin?(user)
+    return if admin?(user)
     @admins.push(user)
     @ops.delete(user)
     self.save
@@ -37,7 +37,7 @@ class AdminList
 
 
   def add_op(user)
-    return if is_op?(user)
+    return if op?(user)
     @ops.push(user)
     self.save
   end

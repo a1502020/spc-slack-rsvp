@@ -65,6 +65,10 @@ class App
           message_rsvp(data)
         elsif message_attend?(data)
           message_attend(data)
+        elsif message_op_add?(data)
+          message_op_add(data)
+        elsif message_op_remove?(data)
+          message_op_remove(data)
         else
           message_unknown(data)
         end
@@ -115,7 +119,7 @@ class App
 
   def message_rsvp(data)
     now = Time.now
-    if @admin_list.is_op?(data['user'])
+    if @admin_list.op?(data['user'])
       message_rsvp_op(data, now)
     else
       message_rsvp_not_op(data, now)
@@ -184,6 +188,56 @@ class App
       return true
     end
     return false
+  end
+
+
+  # OP 追加メッセージ
+
+  def message_op_add?(data)
+    not data['text'].match(/^op.add <@U[A-Z0-9]*>$/).nil?
+  end
+
+  def message_op_add(data)
+    res = nil
+    if @admin_list.admin?(data['user'])
+      user = data['text'].match(/^op.add <@(U[A-Z0-9]*)>$/)[1]
+      log.error 'op.add match failed.' if user.nil?
+      if @admin_list.op?(user)
+        res = "<@#{user}> は既に OP 権限を持っているよ。"
+      else
+        @admin_list.add_op(user)
+        res = "<@#{user}> に OP 権限を与えたよ。"
+      end
+    else
+      res = 'OP 権限を与える権限を持っていないよ。'
+    end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
+  end
+
+
+  # OP 剥奪メッセージ
+
+  def message_op_remove?(data)
+    not data['text'].match(/^op.remove <@U[A-Z0-9]*>$/).nil?
+  end
+
+  def message_op_remove(data)
+    res = nil
+    if @admin_list.admin?(data['user'])
+      user = data['text'].match(/^op.remove <@(U[A-Z0-9]*)>$/)[1]
+      log.error 'op.remove match failed.' if user.nil?
+      if @admin_list.admin?(user)
+        res = "管理者の OP 権限は無くせないよ。"
+      elsif @admin_list.op?(user)
+        @admin_list.remove_op(user)
+        res = "<@#{user}> の OP 権限を無くしたよ。"
+      else
+        res = "<@#{user}> は OP 権限を持っていないよ。"
+      end
+    else
+      res = 'OP 権限を無くす権限を持っていないよ。'
+    end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
   end
 
 
