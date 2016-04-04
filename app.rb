@@ -90,13 +90,15 @@ class App
 
   def message_rsvp(data)
     now = Time.now
+    nowstr = now.strftime('%Y-%m-%d %X')
     res = nil
     @db.transaction do
       user = get_responsibility(now)
       if user == nil
         key = 'AAAA'
         user = data['user']
-        @db.exec 'days-insert', {:datetime => now.strftime('%Y-%m-%d %X'), :key => key, :responsibility => user}
+        @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
+        @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
         res = "今日のキーワードは '#{key}' だよ。"
       else
         res = "<@#{user}> が既に出欠確認を始めているよ。"

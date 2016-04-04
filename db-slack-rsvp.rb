@@ -10,7 +10,10 @@ class DBSlackRsvp
     @db = Database.new('slack-rsvp.db')
     ObjectSpace.define_finalizer self, DBSlackRsvp.finalize(@db)
     self.exec 'days-exists' do |row|
-      if row[0] == 0 then self.exec_batch 'days-create' end
+       self.exec_batch 'days-create' if row[0] == 0
+    end
+    self.exec 'attendees-exists' do |row|
+      self.exec_batch 'attendees-create' if row[0] == 0
     end
   end
 
