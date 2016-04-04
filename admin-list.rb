@@ -43,7 +43,7 @@ class AdminList
   end
 
   def remove_op(user)
-    @admins.delete(user)
+    raise "can't remove op from admin user." if admin?(user)
     @ops.delete(user)
     self.save
   end
