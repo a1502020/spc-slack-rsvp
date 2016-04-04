@@ -51,6 +51,8 @@ class App
       if im?(data['channel'])
         if message_rsvp?(data)
           message_rsvp(data)
+        elsif message_attend?(data)
+          message_attend(data)
         else
           message_unknown(data)
         end
@@ -67,6 +69,18 @@ class App
     to = time.strftime('%Y-%m-%d 23:59:59')
     @db.exec 'days-range', { :from => from, :to => to } do |_, _, _, responsibility|
       return responsibility
+    end
+    return nil
+  end
+
+
+  # 指定した日のキーワードを取得する
+
+  def get_key(time)
+    from = time.strftime('%Y-%m-%d 00:00:00')
+    to = time.strftime('%Y-%m-%d 23:59:59')
+    @db.exec 'days-range', { :from => from, :to => to } do |_, _, key, _|
+      return key
     end
     return nil
   end
@@ -105,6 +119,38 @@ class App
       end
     end
     @rt_client.message channel: data['channel'], text: res unless res == nil
+  end
+
+
+  # 出席メッセージ
+
+  def message_attend?(data)
+    not data['text'].upcase.match(/^[AC-HJKPR-Y3-578]{4}$/).nil?
+  end
+
+  def message_attend(data)
+    now = Time.now
+    nowstr = now.strftime('%Y-%m-%d %X')
+    key = get_key(now)
+    if key.nil?
+      @rt_client.message channel: data['channel'], text: '今日の出欠確認はまだ始まっていないみたいだよ。'
+    elsif data['text'].upcase != key
+      @rt_client.message channel: data['channel'], text: 'キーワードが違うよ。'
+    elsif already_attended?(now, data['user'])
+      @rt_client.message channel: data['channel'], text: "今日の <@#{data['user']}> の出席は確認済みだよ。"
+    else
+      @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => data['user'] }
+      @rt_client.message channel: data['channel'], text: "今日の <@#{data['user']}> の出席を確認したよ。"
+    end
+  end
+
+  def already_attended?(time, user)
+    from = time.strftime('%Y-%m-%d 00:00:00')
+    to = time.strftime('%Y-%m-%d 23:59:59')
+    @db.exec 'attendees-range-user', { :from => from, :to => to, :user => user } do |row|
+      return true
+    end
+    return false
   end
 
 
