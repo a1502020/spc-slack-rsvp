@@ -1,6 +1,7 @@
 require 'slack-ruby-client'
 require 'logger'
 require './db-slack-rsvp'
+require './key-gen'
 
 
 class App
@@ -23,6 +24,11 @@ class App
     # DB を開く
 
     @db = DBSlackRsvp.new
+
+
+    # キーワード生成器
+
+    @key_gen = KeyGen.new(@db)
 
 
     # Slack クライアント
@@ -109,7 +115,7 @@ class App
     @db.transaction do
       user = get_responsibility(now)
       if user == nil
-        key = 'AAAA'
+        key = @key_gen.generate
         user = data['user']
         @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
         @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
