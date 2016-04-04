@@ -2,6 +2,7 @@ require 'slack-ruby-client'
 require 'logger'
 require './db-slack-rsvp'
 require './key-gen'
+require './admin-list'
 
 
 class App
@@ -19,6 +20,11 @@ class App
 
     FileUtils.mkdir('log') unless FileTest.exist?('log')
     @log = Logger.new('log/slack-rsvp.log')
+
+
+    # 管理者
+
+    @admin_list = AdminList.new
 
 
     # DB を開く
@@ -112,19 +118,30 @@ class App
     now = Time.now
     nowstr = now.strftime('%Y-%m-%d %X')
     res = nil
-    @db.transaction do
-      user = get_responsibility(now)
-      if user == nil
-        key = @key_gen.generate
-        user = data['user']
-        @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
-        @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
-        res = "今日のキーワードは '#{key}' だよ。"
-      else
-        res = "<@#{user}> が既に出欠確認を始めているよ。"
+    if @admin_list.is_op?(data['user'])
+      @db.transaction do
+        user = get_responsibility(now)
+        if user == nil
+          key = @key_gen.generate
+          user = data['user']
+          @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
+          @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
+          res = "今日のキーワードは '#{key}' だよ。"
+        else
+          res = "<@#{user}> が既に出欠確認を始めているよ。"
+        end
       end
+      @rt_client.message channel: data['channel'], text: res unless res == nil
+    else
+      res = nil
+      user = get_responsibility(now)
+      if user.nil?
+        res = '出欠確認を開始する権限がないよ。'
+      else
+        res = "出欠確認を開始する権限がないよ。<@#{user}> が既に出欠確認を始めているよ。"
+      end
+      @rt_client.message channel: data['channel'], text: res unless res.nil?
     end
-    @rt_client.message channel: data['channel'], text: res unless res == nil
   end
 
 
