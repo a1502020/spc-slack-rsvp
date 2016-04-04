@@ -58,6 +58,7 @@ class App
 
     @rt_client.on :message do |data|
       @log.info(format_log_message(data))
+      return if data['user'] == @rt_client.self['id']
       if im?(data['channel'])
         if message_rsvp?(data)
           message_rsvp(data)
