@@ -40,7 +40,7 @@ class App
     # Slack クライアント
 
     Slack.configure do |conf|
-      conf.token = File.open('slack-token').read.chomp
+      conf.token = File.read('slack-token').chomp
     end
 
     @rt_client = Slack::RealTime::Client.new(logger: Logger.new('log/rt-client.log'))
@@ -74,27 +74,26 @@ class App
   end
 
 
-  # 指定した日の代表者のユーザー ID を取得する
+  # 指定した日のキーワードと代表者のユーザー ID を取得する
 
-  def get_responsibility(time)
+  def get_key_responsibility(time)
     from = time.strftime('%Y-%m-%d 00:00:00')
     to = time.strftime('%Y-%m-%d 23:59:59')
-    @db.exec 'days-range', { :from => from, :to => to } do |_, _, _, responsibility|
-      return responsibility
+    res = nil
+    @db.exec 'days-range', { :from => from, :to => to } do |_, _, key, responsibility|
+      res = { 'key' => key, 'responsibility' => responsibility }
     end
-    return nil
+    return res
   end
 
-
-  # 指定した日のキーワードを取得する
+  def get_responsibility(time)
+    kr = get_key_responsibility(time)
+    return kr.nil? ? nil : kr['responsibility']
+  end
 
   def get_key(time)
-    from = time.strftime('%Y-%m-%d 00:00:00')
-    to = time.strftime('%Y-%m-%d 23:59:59')
-    @db.exec 'days-range', { :from => from, :to => to } do |_, _, key, _|
-      return key
-    end
-    return nil
+    kr = get_key_responsibility(time)
+    return kr.nil? ? nil : kr['key']
   end
 
 
@@ -116,32 +115,40 @@ class App
 
   def message_rsvp(data)
     now = Time.now
+    if @admin_list.is_op?(data['user'])
+      message_rsvp_op(data, now)
+    else
+      message_rsvp_not_op(data, now)
+    end
+  end
+
+  def message_rsvp_op(data, now)
     nowstr = now.strftime('%Y-%m-%d %X')
     res = nil
-    if @admin_list.is_op?(data['user'])
-      @db.transaction do
-        user = get_responsibility(now)
-        if user == nil
-          key = @key_gen.generate
-          user = data['user']
-          @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
-          @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
-          res = "今日のキーワードは '#{key}' だよ。"
-        else
-          res = "<@#{user}> が既に出欠確認を始めているよ。"
-        end
-      end
-      @rt_client.message channel: data['channel'], text: res unless res == nil
-    else
-      res = nil
+    @db.transaction do
       user = get_responsibility(now)
       if user.nil?
-        res = '出欠確認を開始する権限がないよ。'
+        key = @key_gen.generate
+        user = data['user']
+        @db.exec 'days-insert', { :datetime => nowstr, :key => key, :responsibility => user }
+        @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
+        res = "今日のキーワードは '#{key}' だよ。"
       else
-        res = "出欠確認を開始する権限がないよ。<@#{user}> が既に出欠確認を始めているよ。"
+        res = "<@#{user}> が既に出欠確認を始めているよ。"
       end
-      @rt_client.message channel: data['channel'], text: res unless res.nil?
     end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
+  end
+
+  def message_rsvp_not_op(data, now)
+    res = nil
+    user = get_responsibility(now)
+    if user.nil?
+      res = '出欠確認を開始する権限がないよ。'
+    else
+      res = "出欠確認を開始する権限がないよ。<@#{user}> が既に出欠確認を始めているよ。"
+    end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
   end
 
 
@@ -155,22 +162,25 @@ class App
     now = Time.now
     nowstr = now.strftime('%Y-%m-%d %X')
     key = get_key(now)
+    user = data['user']
+    res = nil
     if key.nil?
-      @rt_client.message channel: data['channel'], text: '今日の出欠確認はまだ始まっていないみたいだよ。'
+      res = '今日の出欠確認はまだ始まっていないみたいだよ。'
     elsif data['text'].upcase != key
-      @rt_client.message channel: data['channel'], text: 'キーワードが違うよ。'
-    elsif already_attended?(now, data['user'])
-      @rt_client.message channel: data['channel'], text: "今日の <@#{data['user']}> の出席は確認済みだよ。"
+      res = 'キーワードが違うよ。'
+    elsif already_attended?(now, user)
+      res = "今日の <@#{user}> の出席は確認済みだよ。"
     else
-      @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => data['user'] }
-      @rt_client.message channel: data['channel'], text: "今日の <@#{data['user']}> の出席を確認したよ。"
+      @db.exec 'attendees-insert', { :datetime => nowstr, :attendee => user }
+      res = "今日の <@#{user}> の出席を確認したよ。"
     end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
   end
 
   def already_attended?(time, user)
     from = time.strftime('%Y-%m-%d 00:00:00')
     to = time.strftime('%Y-%m-%d 23:59:59')
-    @db.exec 'attendees-range-user', { :from => from, :to => to, :user => user } do |row|
+    @db.exec 'attendees-range-user', { :from => from, :to => to, :user => user } do
       return true
     end
     return false
