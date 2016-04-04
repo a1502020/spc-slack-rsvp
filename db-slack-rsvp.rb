@@ -28,5 +28,9 @@ class DBSlackRsvp
     @db.execute_batch File.open("sql/#{sql_file}.sql").read, bind_vars, *args, &block
   end
 
+  def transaction(&block)
+    @db.transaction &block
+  end
+
 end
 
