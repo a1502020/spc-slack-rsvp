@@ -2,11 +2,7 @@ class KeyGen
 
   def initialize(db)
     @db = db
-    @chars = [
-      'A', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
-      'P', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
-      '3', '4', '5', '7', '8'
-    ]
+    @chars = 'ACDEFGHJKPRSTUVWXY34578'
   end
 
   def generate
@@ -23,7 +19,11 @@ class KeyGen
   private
 
   def generate_one
-    (1..4).map { @chars[rand(@chars.length)] }.join
+    res = 'RSVP'
+    until res != 'RSVP'
+      res = (1..4).map { @chars[rand(@chars.length)] }.join
+    end
+    return res
   end
 
   def used?(key, from, to)
