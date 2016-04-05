@@ -14,6 +14,15 @@ class AdminList
   end
 
 
+  def admins
+    Array.new(@admins)
+  end
+
+  def ops
+    Array.new(@admins).concat(@ops).uniq
+  end
+
+
   def admin?(user)
     @admins.include?(user)
   end
