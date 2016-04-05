@@ -70,6 +70,8 @@ class App
           message_op_add(data)
         elsif message_op_remove?(data)
           message_op_remove(data)
+        elsif message_op_list?(data)
+          message_op_list(data)
         else
           message_unknown(data)
         end
@@ -238,6 +240,18 @@ class App
     else
       res = 'OP 権限を無くす権限を持っていないよ。'
     end
+    @rt_client.message channel: data['channel'], text: res unless res.nil?
+  end
+
+
+  # OP 一覧メッセージ
+
+  def message_op_list?(data)
+    data['text'] == 'op.list'
+  end
+
+  def message_op_list(data)
+    res = "OP 一覧:\n#{@admin_list.ops.map { |user| "<@#{user}>" }.join(', ')}"
     @rt_client.message channel: data['channel'], text: res unless res.nil?
   end
 
