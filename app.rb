@@ -1,5 +1,6 @@
 require 'slack-ruby-client'
 require 'logger'
+require 'date'
 require './db-slack-rsvp'
 require './key-gen'
 require './admin-list'
@@ -9,11 +10,22 @@ class App
 
   def initialize
 
-    # 単語リスト
+    # 単語・パターンリスト
 
     @words_rsvp = [
       '出席', '出欠', '出席確認', '出欠確認',
       'RSVP', 'R.S.V.P.', 'rsvp'
+    ]
+    @patterns_attendee = [
+      /^出席者(.*)/, /^(.*)の出席者/,
+      /^出席一覧(.*)/, /^(.*)の出席一覧/,
+      /^attendee(.*)/
+    ]
+    @words_today = [
+      '今日', 'きょう', 'today', 'Today', 'TODAY', '本日'
+    ]
+    @words_yesterday = [
+      '昨日', 'きのう', 'yesterday', 'Yesterday', 'YESTERDAY', '昨日'
     ]
 
     # ログ
@@ -60,7 +72,9 @@ class App
       @log.info(format_log_message(data))
       next if data['user'] == @rt_client.self['id']
       if im?(data['channel'])
-        if message_rsvp?(data)
+        if message_attendee?(data)
+          message_attendee(data)
+        elsif message_rsvp?(data)
           message_rsvp(data)
         elsif message_attend?(data)
           message_attend(data)
@@ -102,6 +116,25 @@ class App
   end
 
 
+  # 文字列を DateTime に変換する
+  # 変換できない場合は nil を返す
+  def str_to_datetime(str)
+    s = str.chomp
+    s.gsub!(/[0-9]+(年|月)/, '/')
+    s.gsub!(/[0-9]+(日)/, ' ')
+    s.gsub!(/[0-9]+(時)/, ':')
+    s.gsub!(/[0-9]+(分)[0-9]+/, ':')
+    s.gsub!(/[0-9]+(分|秒)/, ' ')
+    begin
+      return DateTime.parse(s)
+    rescue
+    end
+    return DateTime.now if @words_today.include?(s)
+    return DateTime.now - 1 if @words_yesterday.include?(s)
+    return nil
+  end
+
+
   def format_log_message(data)
     "#{data['channel']} #{data['user']} \"#{data['text'].gsub(/\\/, '\\\\\\\\').gsub(/\r\n|\r|\n/, '\\n')}\""
   end
@@ -109,6 +142,37 @@ class App
 
   def im?(channel)
     channel.start_with?('D')
+  end
+
+
+  # 出席者一覧メッセージ
+
+  def message_attendee?(data)
+    @patterns_attendee.any? { |p| data['text'].match(p) }
+  end
+
+  def message_attendee(data)
+    @patterns_attendee.each do |p|
+      data['text'].match(p) do |md|
+        day = str_to_datetime(md[1])
+        day = DateTime.now if day.nil?
+        daystr = day.strftime('%Y/%m/%d')
+        if get_responsibility(day).nil?
+          @rt_client.message text: "#{daystr} は出席確認をしていないよ。", channel: data['channel']
+        else
+          from = day.strftime('%Y-%m-%d 00:00:00')
+          to = day.strftime('%Y-%m-%d 23:59:59')
+          list = []
+          @db.exec 'attendees-range', { :from => from, :to => to } do |row|
+            list.push row[2]
+          end
+          text = "#{daystr} の出席者一覧：\n"
+          text += list.map { |user| "<@#{user}>" }.join(', ')
+          @rt_client.message text: text, channel: data['channel']
+        end
+        return
+      end
+    end
   end
 
 
