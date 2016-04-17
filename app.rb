@@ -119,12 +119,13 @@ class App
   # 文字列を DateTime に変換する
   # 変換できない場合は nil を返す
   def str_to_datetime(str)
-    s = str.chomp
+    s = str.strip
     s.gsub!(/[0-9]+(年|月)/, '/')
     s.gsub!(/[0-9]+(日)/, ' ')
     s.gsub!(/[0-9]+(時)/, ':')
     s.gsub!(/[0-9]+(分)[0-9]+/, ':')
     s.gsub!(/[0-9]+(分|秒)/, ' ')
+    s.strip!
     begin
       return DateTime.parse(s)
     rescue
