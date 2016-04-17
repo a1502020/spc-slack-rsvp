@@ -115,7 +115,7 @@ class App
   # 出欠確認開始メッセージ
 
   def message_rsvp?(data)
-    @words_rsvp.any? { |w| data['text'].start_with?(w) }
+    @words_rsvp.any? { |w| data['text'].include?(w) }
   end
 
   def message_rsvp(data)
@@ -257,7 +257,6 @@ class App
   # 未知のメッセージ
 
   def message_unknown(data)
-    @rt_client.message channel: data['channel'], text:'？'
   end
 
 
