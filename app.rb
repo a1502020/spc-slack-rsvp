@@ -27,6 +27,9 @@ class App
     @words_yesterday = [
       '昨日', 'きのう', 'yesterday', 'Yesterday', 'YESTERDAY', '昨日'
     ]
+    @words_help = [
+      'help', 'h', '-h', '--help', '?', '？'
+    ]
 
     # ログ
 
@@ -72,7 +75,9 @@ class App
       @log.info(format_log_message(data))
       next if data['user'] == @rt_client.self['id']
       if im?(data['channel'])
-        if message_reset?(data)
+        if message_help?(data)
+          message_help(data)
+        elsif message_reset?(data)
           message_reset(data)
         elsif message_attendee?(data)
           message_attendee(data)
@@ -145,6 +150,27 @@ class App
 
   def im?(channel)
     channel.start_with?('D')
+  end
+
+
+  # ヘルプ
+
+  def message_help?(data)
+    @words_help.include?(data['text'].strip)
+  end
+
+  def message_help(data)
+    res = ''
+    File.foreach('help') do |line|
+      if line.chomp == '[op]'
+        break unless @admin_list.op?(data['user'])
+      elsif line.chomp == '[admin]'
+        break unless @admin_list.admin?(data['user'])
+      else
+        res += "#{line}\n"
+      end
+    end
+    @rt_client.message text: res, channel: data['channel']
   end
 
 
