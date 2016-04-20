@@ -225,7 +225,7 @@ class App
   # 出席メッセージ
 
   def message_attend?(data)
-    not data['text'].upcase.match(/^[AC-HJKPR-Y3-578]{4}$/).nil?
+    not data['text'].split.upcase.match(/^[AC-HJKPR-Y3-578]{4}$/).nil?
   end
 
   def message_attend(data)
@@ -236,7 +236,7 @@ class App
     res = nil
     if key.nil?
       res = '今日の出欠確認はまだ始まっていないみたいだよ。'
-    elsif data['text'].upcase != key
+    elsif data['text'].split.upcase != key
       res = 'キーワードが違うよ。'
     elsif already_attended?(now, user)
       res = "今日の <@#{user}> の出席は確認済みだよ。"
@@ -260,13 +260,13 @@ class App
   # OP 追加メッセージ
 
   def message_op_add?(data)
-    not data['text'].match(/^op.add <@U[A-Z0-9]*>$/).nil?
+    not data['text'].split.match(/^op.add <@U[A-Z0-9]*>$/).nil?
   end
 
   def message_op_add(data)
     res = nil
     if @admin_list.admin?(data['user'])
-      user = data['text'].match(/^op.add <@(U[A-Z0-9]*)>$/)[1]
+      user = data['text'].split.match(/^op.add <@(U[A-Z0-9]*)>$/)[1]
       log.error 'op.add match failed.' if user.nil?
       if @admin_list.op?(user)
         res = "<@#{user}> は既に OP 権限を持っているよ。"
@@ -284,13 +284,13 @@ class App
   # OP 剥奪メッセージ
 
   def message_op_remove?(data)
-    not data['text'].match(/^op.remove <@U[A-Z0-9]*>$/).nil?
+    not data['text'].split.match(/^op.remove <@U[A-Z0-9]*>$/).nil?
   end
 
   def message_op_remove(data)
     res = nil
     if @admin_list.admin?(data['user'])
-      user = data['text'].match(/^op.remove <@(U[A-Z0-9]*)>$/)[1]
+      user = data['text'].split.match(/^op.remove <@(U[A-Z0-9]*)>$/)[1]
       log.error 'op.remove match failed.' if user.nil?
       if @admin_list.admin?(user)
         res = "管理者の OP 権限は無くせないよ。"
@@ -310,7 +310,7 @@ class App
   # OP 一覧メッセージ
 
   def message_op_list?(data)
-    data['text'] == 'op.list'
+    data['text'].split == 'op.list'
   end
 
   def message_op_list(data)
