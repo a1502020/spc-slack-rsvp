@@ -72,7 +72,9 @@ class App
       @log.info(format_log_message(data))
       next if data['user'] == @rt_client.self['id']
       if im?(data['channel'])
-        if message_attendee?(data)
+        if message_reset?(data)
+          message_reset(data)
+        elsif message_attendee?(data)
           message_attendee(data)
         elsif message_rsvp?(data)
           message_rsvp(data)
@@ -225,7 +227,7 @@ class App
   # 出席メッセージ
 
   def message_attend?(data)
-    not data['text'].split.upcase.match(/^[AC-HJKPR-Y3-578]{4}$/).nil?
+    not data['text'].strip.upcase.match(/^[AC-HJKPR-Y3-578]{4}$/).nil?
   end
 
   def message_attend(data)
@@ -236,7 +238,7 @@ class App
     res = nil
     if key.nil?
       res = '今日の出欠確認はまだ始まっていないみたいだよ。'
-    elsif data['text'].split.upcase != key
+    elsif data['text'].strip.upcase != key
       res = 'キーワードが違うよ。'
     elsif already_attended?(now, user)
       res = "今日の <@#{user}> の出席は確認済みだよ。"
@@ -260,13 +262,13 @@ class App
   # OP 追加メッセージ
 
   def message_op_add?(data)
-    not data['text'].split.match(/^op.add <@U[A-Z0-9]*>$/).nil?
+    not data['text'].strip.match(/^op.add <@U[A-Z0-9]*>$/).nil?
   end
 
   def message_op_add(data)
     res = nil
     if @admin_list.admin?(data['user'])
-      user = data['text'].split.match(/^op.add <@(U[A-Z0-9]*)>$/)[1]
+      user = data['text'].strip.match(/^op.add <@(U[A-Z0-9]*)>$/)[1]
       log.error 'op.add match failed.' if user.nil?
       if @admin_list.op?(user)
         res = "<@#{user}> は既に OP 権限を持っているよ。"
@@ -284,13 +286,13 @@ class App
   # OP 剥奪メッセージ
 
   def message_op_remove?(data)
-    not data['text'].split.match(/^op.remove <@U[A-Z0-9]*>$/).nil?
+    not data['text'].strip.match(/^op.remove <@U[A-Z0-9]*>$/).nil?
   end
 
   def message_op_remove(data)
     res = nil
     if @admin_list.admin?(data['user'])
-      user = data['text'].split.match(/^op.remove <@(U[A-Z0-9]*)>$/)[1]
+      user = data['text'].strip.match(/^op.remove <@(U[A-Z0-9]*)>$/)[1]
       log.error 'op.remove match failed.' if user.nil?
       if @admin_list.admin?(user)
         res = "管理者の OP 権限は無くせないよ。"
@@ -310,12 +312,31 @@ class App
   # OP 一覧メッセージ
 
   def message_op_list?(data)
-    data['text'].split == 'op.list'
+    data['text'].strip == 'op.list'
   end
 
   def message_op_list(data)
     res = "OP 一覧:\n#{@admin_list.ops.map { |user| "<@#{user}>" }.join(', ')}"
     @rt_client.message channel: data['channel'], text: res unless res.nil?
+  end
+
+
+  # 出欠確認やりなおしメッセージ
+
+  def message_reset?(data)
+    data['text'].strip == 'rsvp.reset'
+  end
+
+  def message_reset(data)
+    return unless @admin_list.admin?(data['user'])
+    now = DateTime.now
+    from = now.strftime('%Y-%m-%d 00:00:00')
+    to = now.strftime('%Y-%m-%d 23:59:59')
+    @db.transaction do
+      @db.exec 'attendees-delete-range', { :from => from, :to => to }
+      @db.exec 'days-delete-range', { :from => from, :to => to }
+    end
+    @rt_client.message text: '今日の出欠確認をリセットしたよ。', channel: data['channel']
   end
 
 
